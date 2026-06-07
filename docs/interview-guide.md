@@ -68,9 +68,33 @@ A：Switch 节点 + Code 节点实现规则判断，新增合规规则只需加�
 
 ---
 
+## Coze Case 1 - 情感分析
+
+### Q：为什么用 Code 节点而不是纯 Prompt 输出？
+
+A：LLM 输出格式不稳定，Code 节点做 JSON 解析、字段校验和置信度归一化，保证下游 n8n/飞书对接可靠。
+
+### Q：知识库放什么内容？
+
+A：情感标签定义、边界案例、行业词典，减少模型自由发挥，提高一致性和可解释性。
+
+---
+
+## Coze Case 2 - 合同审查
+
+### Q：为什么拆成两个知识库？
+
+A：标准条款（完整性检查）与风险规则（等级判定）职责不同，分开维护便于法务独立更新，RAG 检索更精准。
+
+### Q：如何避免 AI 给出错误法律建议？
+
+A：Prompt 明确「辅助审查、不构成法律意见」，输出含 disclaimer；high 风险项建议人工复核。
+
+---
+
 ## 面试演示建议
 
-1. **导入 workflow.json** → Publish → 展示 Executions 面板
-2. **Console 发送测试请求** → 展示企业微信收到通知
-3. **故意发送错误数据** → 展示 Validation 和 Error Trigger 兜底
+1. **n8n**：导入 workflow.json → Publish → Console 测试 → 企业微信通知
+2. **Coze**：打开 Bot 链接 → 跑 2-3 条测试 → 展示结构化 JSON 输出
+3. **对比讲述**：n8n 擅长集成与生产运维，Coze 擅长国内 Agent 快速交付
 4. **打开 docs/infrastructure.md** → 说明 ngrok 和生产部署方案
