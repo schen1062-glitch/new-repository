@@ -12,7 +12,7 @@
 ## 目录结构
 
 ```
-coze-cases/
+coze/
 ├── case1-sentiment-analysis/
 └── case2-contract-review/
 ```
@@ -25,4 +25,4 @@ coze-cases/
 
 ## 相关作品
 
-- n8n 国际集成案例见仓库根目录同级文件夹：`n8n-ai-lead-qualification`、`n8n-intelligent-alert-escalation`、`n8n-automated-compliance-audit`
+- n8n 国际集成案例见同级目录：[../N8N/](../N8N/)
