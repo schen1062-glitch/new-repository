@@ -1,0 +1,96 @@
+{
+  "name": "Intelligent Alert Escalation System - Phase 3 Optimized",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "alert-escalation",
+        "responseMode": "responseNode"
+      },
+      "id": "webhook",
+      "name": "Alert Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"status\": \"received\", \"message\": \"ok\"}"
+      },
+      "id": "respond",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {"name": "severity", "value": "={{ $json.severity || $vars.defaultSeverity || 'medium' }}"},
+            {"name": "message", "value": "={{ $json.message || '无消息内容' }}"},
+            {"name": "alertId", "value": "={{ $json.alertId || Date.now().toString() }}"}
+          ]
+        }
+      },
+      "id": "normalize",
+      "name": "Normalize & Validate",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=e99e7b97-7523-4241-8351-42f72fc4e8f8",
+        "method": "POST",
+        "sendBody": true,
+        "bodyContentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {"name": "msgtype", "value": "text"},
+            {"name": "text", "value": "={{ { \"content\": '🚨 告警\\n严重程度: ' + $json.severity + '\\n内容: ' + $json.message + '\\nID: ' + $json.alertId } }}"}
+          ]
+        },
+        "options": { "retry": { "maxRetries": 3 } }
+      },
+      "id": "wecom",
+      "name": "企业微信通知",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [960, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst logEntry = {\n  timestamp: new Date().toISOString(),\n  alertId: item.alertId,\n  severity: item.severity,\n  message: item.message,\n  status: 'logged'\n};\nreturn [{ json: logEntry }];"
+      },
+      "id": "log",
+      "name": "Write Alert Log",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1200, 300]
+    },
+    {
+      "parameters": {},
+      "id": "error-trigger",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [240, 500]
+    }
+  ],
+  "connections": {
+    "Alert Webhook Trigger": {"main": [[{"node": "Respond to Webhook", "type": "main", "index": 0}]]},
+    "Respond to Webhook": {"main": [[{"node": "Normalize & Validate", "type": "main", "index": 0}]]},
+    "Normalize & Validate": {"main": [[{"node": "企业微信通知", "type": "main", "index": 0}]]},
+    "企业微信通知": {"main": [[{"node": "Write Alert Log", "type": "main", "index": 0}]]}
+  },
+  "active": false,
+  "settings": {
+    "timezone": "Asia/Shanghai",
+    "executionOrder": "v1"
+  },
+  "staticData": {
+    "defaultSeverity": "medium"
+  }
+}

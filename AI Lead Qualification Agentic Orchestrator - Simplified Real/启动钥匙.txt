@@ -1,0 +1,16 @@
+导入后请执行：
+
+1. Publish 工作流（路径冲突停用旧版本）
+2. 点击F12,使用（复制粘贴）以下 Console 测试代码：
+
+fetch("https://nonparentally-unfagged-huong.ngrok-free.dev/webhook/lead-agentic", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    name: "李总监",
+    company: "字节跳动",
+    source: "飞书表单"
+  })
+}).then(r => r.text()).then(console.log).catch(console.error);
+
+3. 检查企业微信是否收到消息 + Executions 面板日志

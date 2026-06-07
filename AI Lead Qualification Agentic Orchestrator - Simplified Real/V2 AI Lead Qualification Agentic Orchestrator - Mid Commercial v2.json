@@ -1,0 +1,101 @@
+{
+  "name": "AI Lead Qualification Agentic Orchestrator - Mid Commercial v2（企业微信版）",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead-agentic",
+        "responseMode": "responseNode"
+      },
+      "id": "webhook",
+      "name": "New Lead Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"status\": \"received\", \"message\": \"ok\"}"
+      },
+      "id": "respond",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {"name": "leadName", "value": "={{ $json.name || $json.leadName || '未知线索' }}"},
+            {"name": "company", "value": "={{ $json.company || '未提供' }}"},
+            {"name": "source", "value": "={{ $json.source || 'Webhook' }}"}
+          ]
+        }
+      },
+      "id": "normalize",
+      "name": "Normalize Lead Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Supervisor Agent - 规划模拟\nconst lead = $input.first().json;\nlet score = Math.floor(Math.random() * 40) + 60;\nlet quality = score > 80 ? 'Hot' : score > 65 ? 'Warm' : 'Cold';\nlet plan = quality === 'Hot' ? '立即通知销售 + CRM同步' : quality === 'Warm' ? '记录观察 + 跟进' : '暂不处理';\nreturn [{ json: { ...lead, leadScore: score, quality, plan, step: 'Planning completed', timestamp: new Date().toISOString() } }];"
+      },
+      "id": "supervisor",
+      "name": "Supervisor Agent (Planning)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=e99e7b97-7523-4241-8351-42f72fc4e8f8",
+        "method": "POST",
+        "sendBody": true,
+        "bodyContentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {"name": "msgtype", "value": "text"},
+            {"name": "text", "value": "={{ { \"content\": '🔥 线索处理报告\\n姓名: ' + $json.leadName + '\\n公司: ' + $json.company + '\\n质量: ' + $json.quality + '\\n分数: ' + $json.leadScore + '\\n计划: ' + $json.plan } }}"}
+          ]
+        },
+        "options": { "retry": { "maxRetries": 3, "retryAmount": 2000 } }
+      },
+      "id": "wecom",
+      "name": "企业微信通知",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1200, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst logEntry = {\n  timestamp: item.timestamp || new Date().toISOString(),\n  leadName: item.leadName,\n  company: item.company,\n  score: item.leadScore,\n  quality: item.quality,\n  plan: item.plan\n};\nreturn [{ json: { ...logEntry, status: 'logged' } }];"
+      },
+      "id": "log",
+      "name": "Audit Log",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1200, 500]
+    },
+    {
+      "parameters": {},
+      "id": "error-trigger",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [240, 650]
+    }
+  ],
+  "connections": {
+    "New Lead Trigger": {"main": [[{"node": "Respond to Webhook", "type": "main", "index": 0}]]},
+    "Respond to Webhook": {"main": [[{"node": "Normalize Lead Data", "type": "main", "index": 0}]]},
+    "Normalize Lead Data": {"main": [[{"node": "Supervisor Agent (Planning)", "type": "main", "index": 0}]]},
+    "Supervisor Agent (Planning)": {"main": [[{"node": "企业微信通知", "type": "main", "index": 0}]]},
+    "企业微信通知": {"main": [[{"node": "Audit Log", "type": "main", "index": 0}]]}
+  },
+  "active": false,
+  "settings": {"timezone": "Asia/Shanghai"}
+}

@@ -1,0 +1,93 @@
+{
+  "name": "Automated Compliance & Audit Trail Workflow - Phase 3 Optimized",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "compliance-audit",
+        "responseMode": "responseNode"
+      },
+      "id": "webhook",
+      "name": "Audit Operation Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"status\": \"received\", \"message\": \"ok\"}"
+      },
+      "id": "respond",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {"name": "operation", "value": "={{ $json.operation || 'unknown' }}"},
+            {"name": "user", "value": "={{ $json.user || 'system' }}"},
+            {"name": "entity", "value": "={{ $json.entity || 'unknown' }}"},
+            {"name": "auditId", "value": "={{ Date.now().toString() }}"}
+          ]
+        }
+      },
+      "id": "normalize",
+      "name": "Normalize & Validate",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const op = ($json.operation || '').toLowerCase();\nconst isSensitive = ['delete', 'remove', 'update_sensitive', 'drop'].includes(op);\nreturn [{ json: { ...$json, isSensitive, compliant: !isSensitive } }];"
+      },
+      "id": "check",
+      "name": "Check Compliance",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=e99e7b97-7523-4241-8351-42f72fc4e8f8",
+        "method": "POST",
+        "sendBody": true,
+        "bodyContentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {"name": "msgtype", "value": "text"},
+            {"name": "text", "value": "={{ { \"content\": '🔒 合规审计\\n操作: ' + $json.operation + '\\n用户: ' + $json.user + '\\n实体: ' + $json.entity + '\\n是否合规: ' + ($json.compliant ? '是' : '否') } }}"}
+          ]
+        },
+        "options": { "retry": { "maxRetries": 2 } }
+      },
+      "id": "wecom",
+      "name": "企业微信通知",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1200, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst logEntry = {\n  timestamp: new Date().toISOString(),\n  auditId: item.auditId,\n  operation: item.operation,\n  user: item.user,\n  entity: item.entity,\n  compliant: item.compliant,\n  isSensitive: item.isSensitive\n};\nreturn [{ json: { ...logEntry, status: 'logged' } }];"
+      },
+      "id": "log",
+      "name": "Write Audit Log",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1200, 400]
+    }
+  ],
+  "connections": {
+    "Audit Operation Trigger": {"main": [[{"node": "Respond to Webhook", "type": "main", "index": 0}]]},
+    "Respond to Webhook": {"main": [[{"node": "Normalize & Validate", "type": "main", "index": 0}]]},
+    "Normalize & Validate": {"main": [[{"node": "Check Compliance", "type": "main", "index": 0}]]},
+    "Check Compliance": {"main": [[{"node": "企业微信通知", "type": "main", "index": 0}], [{"node": "Write Audit Log", "type": "main", "index": 0}]]}
+  },
+  "active": false,
+  "settings": {"timezone": "Asia/Shanghai"}
+}
